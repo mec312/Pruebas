@@ -1,0 +1,75 @@
+server:
+  port: 8093
+spring:
+  application:
+    name: bankdeposit-microservice
+  data:
+    mongodb:
+      #uri: mongodb+srv://spiritbear:Cuymagic321@mycluster.s22zz.mongodb.net/deposit?retryWrites=true&w=majority
+      uri: mongodb+srv://developer:developer@cluster0.aa6qr.mongodb.net/deposit?retryWrites=true&w=majority
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8082/eureka
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - "*"
+  info:
+    env:
+      enabled: true
+info:
+  application:
+    name : bankdeposit-microservice
+    Description : This is a Microservice to manage deposits
+    artifact : bank-clients
+    version : '@project.version@'
+    spring-cloud-version: '@spring-cloud.version@'
+    spring-boot-version: 2.6.4
+
+
+resilience4j:
+  circuitbreaker.:
+    instances:
+      getDepositCB:
+        register-health-indicator: true
+        sliding-window-type: count_based
+        sliding-window-size: 5
+        failure-rate-threshold: 40
+        slow-call-rate-threshold: 40
+        permitted-number-of-calls-in-half-open-state: 1
+        max-wait-duration-in-half-open-state: 10s
+        wait-duration-in-open-state: 10s
+        slow-call-duration-threshold: 2s
+        writable-stack-trace-enabled: true
+        automatic-transition-from-open-to-half-open-enabled: true
+      saveDepositCB:
+        register-health-indicator: true
+        sliding-window-type: count_based
+        sliding-window-size: 5
+        failure-rate-threshold: 40
+        slow-call-rate-threshold: 40
+        permitted-number-of-calls-in-half-open-state: 1
+        max-wait-duration-in-half-open-state: 10s
+        wait-duration-in-open-state: 10s
+        slow-call-duration-threshold: 2s
+        writable-stack-trace-enabled: true
+        automatic-transition-from-open-to-half-open-enabled: true
+  timelimiter:
+    instances:
+      getDepositCB:
+        timeoutDuration: 2000ms
+        cancelRunningFuture: true
+      saveDepositCB:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
+
+apiclient:
+  uri: http://localhost:8083
+microservice-client:
+  uri: /api/clients/
+microservice-accounts:
+  uri: /api/accounts/

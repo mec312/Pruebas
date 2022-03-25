@@ -1,0 +1,72 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: bankclient-microservice
+  data:
+    mongodb:
+      #uri: mongodb+srv://spiritbear:Cuymagic321@mycluster.s22zz.mongodb.net/clients?retryWrites=true&w=majority
+      uri: mongodb+srv://developer:developer@cluster0.aa6qr.mongodb.net/clients?retryWrites=true&w=majority
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - "*"
+  info:
+    env:
+      enabled: true
+info:
+  application:
+    name : bankclient-microservice
+    Description : This is a Microservice to manage clients
+    artifact : bank-clients
+    version : '@project.version@'
+    spring-cloud-version: '@spring-cloud.version@'
+    spring-boot-version: 2.6.4
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8082/eureka
+
+
+
+resilience4j:
+  circuitbreaker.:
+    instances:
+      saveClientCB:
+        register-health-indicator: true
+        sliding-window-type: count_based
+        sliding-window-size: 5
+        failure-rate-threshold: 40
+        slow-call-rate-threshold: 40
+        permitted-number-of-calls-in-half-open-state: 1
+        max-wait-duration-in-half-open-state: 10s
+        wait-duration-in-open-state: 10s
+        slow-call-duration-threshold: 2s
+        writable-stack-trace-enabled: true
+        automatic-transition-from-open-to-half-open-enabled: true
+      getClientCB:
+        register-health-indicator: true
+        sliding-window-type: count_based
+        sliding-window-size: 5
+        failure-rate-threshold: 40
+        slow-call-rate-threshold: 40
+        permitted-number-of-calls-in-half-open-state: 1
+        max-wait-duration-in-half-open-state: 10s
+        wait-duration-in-open-state: 10s
+        slow-call-duration-threshold: 2s
+        writable-stack-trace-enabled: true
+        automatic-transition-from-open-to-half-open-enabled: true
+
+resilience4j.timelimiter:
+    instances:
+      saveClientCB:
+        timeoutDuration: 2000ms
+        cancelRunningFuture: true
+      getClientCB:
+        timeoutDuration: 2000ms
+        cancelRunningFuture: true
