@@ -5,6 +5,7 @@ import com.credit.card.bean.CreditMovement;
 import com.credit.card.dto.CreditCardDto;
 import com.credit.card.dto.CreditMovementDto;
 import com.credit.card.service.CreditCardService;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,10 +19,10 @@ import javax.annotation.Resource;
 
 
 @RestController
+@Slf4j
 @RequestMapping(path = "/api/creditcard")
 public class CreditCardController {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(CreditCardController.class);
     @Autowired(required = false)
     private WebClient.Builder webClient;
     @Resource
@@ -29,32 +30,31 @@ public class CreditCardController {
 
     @GetMapping("/")
     public Flux<CreditCard> findAllCreditCard(){
-        LOGGER.debug("Getting Credit Card!");
+        log.debug("Getting Credit Card!");
         return creditCardService.findAllCreditCard();
     }
 
     @GetMapping("/{id}")
     public Mono<CreditCard> findByIdCreditCard(@PathVariable String id){
-        LOGGER.debug("Getting a credit card!");
+        log.debug("Getting a credit card!");
         return creditCardService.findByIdCreditCard(id);
     }
 
     @PostMapping("/")
     public Mono<CreditCard> saveCreditCard(@RequestBody CreditCard creditCard){
-        LOGGER.debug("Saving credit card!");
-
+        log.debug("Saving credit card!");
         return creditCardService.saveCreditCard(creditCard);
     }
 
     @PutMapping("/{id}")
     public Mono<CreditCardDto> updateCreditCard(@RequestBody Mono<CreditCardDto> creditCardMono, @PathVariable String id){
-        LOGGER.debug("Updating credit card!");
+        log.debug("Updating credit card!");
         return creditCardService.updateCreditCard(creditCardMono,id);
     }
 
     @DeleteMapping("/{id}")
     public Mono<Void> deleteByIdCreditCard(@PathVariable String id){
-        LOGGER.debug("Deleting credit card!");
+        log.debug("Deleting credit card!");
         return creditCardService.deleteByIdCreditCard(id);
     }
 

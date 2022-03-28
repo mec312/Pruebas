@@ -1,7 +1,11 @@
 package com.bootcamp.bankaccount.models.bean;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,16 +19,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 
 public class Client {
-    @Id
-    private String id;
-    private String name;
-
-    private String clientIdType;
-
-    private String clientIdNumber;
-
-    private String email;
-    private String phone;
-    private String address;
-
+  @Id
+  private String id;
+  private String name;
+  private String clientIdType;
+  private String clientIdNumber;
+  private String email;
+  private String phone;
+  private String address;
 }

@@ -1,18 +1,18 @@
 package com.bootcamp.bankaccount.service.Impl;
 
 import com.bootcamp.bankaccount.models.bean.Account;
-import com.bootcamp.bankaccount.models.bean.Client;
 import com.bootcamp.bankaccount.models.dto.AccountDto;
 import com.bootcamp.bankaccount.models.dto.ClientDto;
 import com.bootcamp.bankaccount.models.dto.CreditCardDto;
 import com.bootcamp.bankaccount.repository.AccountRepository;
 import com.bootcamp.bankaccount.service.AccountService;
 import com.bootcamp.bankaccount.util.AppUtils;
+import com.bootcamp.bankaccount.util.Constants;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -20,147 +20,106 @@ import org.springframework.web.client.RestTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
+import java.util.Optional;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Slf4j
 @Service
 public class AccountServiceImpl implements AccountService {
-    private static final Logger LOGGER = LoggerFactory.getLogger(AccountServiceImpl.class);
+  @Autowired
+  private AccountRepository accountRepository;
+  @Autowired
+  private RestTemplate restTemplate;
 
-    @Autowired
-    private AccountRepository accountRepository;
-    @Autowired
-    private RestTemplate restTemplate;
+  @Value("${microservice-clients.uri}")
+  private String urlClients;
 
-    @Value("${microservice-clients.uri}")
-    private String urlClients;
+  @Value("${microservice-creditcard.uri}")
+  private String urlCreditCard;
 
-    @Value("${microservice-creditcard.uri}")
-    private String urlCreditCard;
+  @Value("${apiclient.uri}")
+  private String urlApigateway;
 
-    @Value("${apiclient.uri}")
-    private String urlApigateway;
+  public Flux<AccountDto> getAccounts() {
+    return accountRepository.findAll().map(AppUtils::entityToDto);
+  }
 
-    public Flux<AccountDto> getAccounts() {
-        return accountRepository.findAll().map(AppUtils::entityToDto);
-    }
+  @Override
+  public Mono<AccountDto> getAccountById(String id) {
+    return accountRepository.findById(id).map(AppUtils::entityToDto);
+  }
 
-    @Override
-    public Mono<AccountDto> getAccountById(String id) {
-        return accountRepository.findById(id).map(AppUtils::entityToDto);
-    }
-
-    @Override
-    public Mono<AccountDto> saveAccount(AccountDto accountDto) {
-/*        Optional<ClientDto> clientOp = Optional.ofNullable(
-                breakerFactory.create("getForObject")
-                .run(() -> obtainClient(accountDto.getClientIdNumber()),
-                     t -> null   )
-        );
-        LOGGER.debug(clientOp.isEmpty()+","+clientOp.isPresent()+":"+clientOp);
-        //obtainAccountsClient();
-        //return accountRepository.save(accountDto);
-        return clientOp.map(c-> {
-            return Mono.just(accountDto).map(AppUtils::dtoToEntity)
-                    .flatMap(accountRepository::insert)
-                    .map(AppUtils::entityToDto);
-        }).orElse(Mono.just(new AccountDto()));
-
-
-*/
-        if(accountDto.getAccountType()=="VIP"||accountDto.getAccountType()=="PYME"){
-            CreditCardDto haveCreditCard = restTemplate.getForObject(urlApigateway + urlCreditCard + accountDto.getAccountType(), CreditCardDto.class);
-            if(haveCreditCard!=null){
-                if(accountDto.getBalance()>=accountDto.getMinimumOpeningAmount()){
-                    ClientDto dto = obtainClient(accountDto.getClientIdNumber());
-                    return Mono.just(accountDto).map(AppUtils::dtoToEntity)
-                            .flatMap(accountRepository::insert)
-                            .map(AppUtils::entityToDto);
-                }
-                else{
-                    LOGGER.debug("Cliente no se registró porque el monto inicial no es mayor a el mínimo de apertura");
-                    return null;
-                }
-            }
-            else{
-                LOGGER.debug("Cliente no se registró porque según el tipo de producto requiere tener una tarjeta de crédito");
-                return null;
-            }
-
+  @Override
+  public Mono<AccountDto> saveAccount(AccountDto accountDto) {
+    if (StringUtils.equals(accountDto.getAccountType(), Constants.VIP)
+            || StringUtils.equals(accountDto.getAccountType(), Constants.PYME)) {
+      if (!Objects.isNull(restTemplate.getForObject(
+              urlApigateway + urlCreditCard + accountDto.getAccountType(),
+              CreditCardDto.class))) {
+        if (accountDto.getBalance() >= accountDto.getMinimumOpeningAmount()) {
+          return Mono.just(accountDto).map(AppUtils::dtoToEntity)
+                  .flatMap(accountRepository::insert)
+                  .map(AppUtils::entityToDto);
+        } else {
+          log.debug(Constants.MSJ_MONTO_MENOR_APERTURA);
+          return null;
         }
-        else{
-            if(accountDto.getBalance()>=accountDto.getMinimumOpeningAmount()){
-                ClientDto dto = obtainClient(accountDto.getClientIdNumber());
-                return Mono.just(accountDto).map(AppUtils::dtoToEntity)
-                        .flatMap(accountRepository::insert)
-                        .map(AppUtils::entityToDto);
-            }
-            else{
-                LOGGER.debug("CLiente no se registró porque el monto inicial no es mayor a el mínimo de apertura");
-                return null;
-            }
-        }
-
-
-
-    }
-
-    /*private AccountDto obtainAccountsClient(Account account, ClientDto client) {
-        Flux<Account> acc = accountRepository.findByClientIdNumber(account.getClientIdNumber());
-        int countAccountS = 0;
-        int countAccountC = 0;
-        int countAccount = 0;
-
-        acc.flatMap((ac) ->{
-            int rsp = 0;
-                if(Constants.TIPO_CLIENTE_PERSONA.equalsIgnoreCase(client.getClientType().getId())
-                    && Constants.TIPO_CUENTA_AHORRO.equalsIgnoreCase(ac.getAccountType())){
-                    rsp = 1;
-                } else{
-                    rsp = 0;
-                }
-                return null;
-        });
-
-        if(countAccount > 1 && countAccountC > 1){
-
-        }
+      } else {
+        log.debug(Constants.MSJ_REQUIERE_TC);
         return null;
-    }*/
-    private ClientDto obtainClient(String clientId) {
-        ClientDto clientDto = restTemplate.getForObject(urlApigateway + urlClients + "findClientCredit/" + clientId, ClientDto.class);
+      }
 
-        LOGGER.debug("clientDto:" + clientDto.getClientIdNumber());
-        return clientDto;
-    }
-
-    @Override
-    public Mono<AccountDto> updateAccount(Mono<AccountDto> AccountDtoMono, String id) {
-        return accountRepository.findById(id)
-                .flatMap(p -> AccountDtoMono.map(AppUtils::dtoToEntity)
-                        .doOnNext(e -> e.setId(id)))
-                .flatMap(accountRepository::save)
+    } else {
+      // NO ES CUENTA VIP, NO ES CUENTA PYME
+      if (accountDto.getBalance() >= accountDto.getMinimumOpeningAmount()) {
+        return Mono.just(accountDto).map(AppUtils::dtoToEntity)
+                .flatMap(accountRepository::insert)
                 .map(AppUtils::entityToDto);
+      } else {
+        log.debug(Constants.MSJ_MONTO_MENOR_APERTURA);
+        return null;
+      }
     }
 
-    public Mono<Void> deleteAccount(String id) {
-        return accountRepository.deleteById(id);
-    }
 
-    @Override
-    public Flux<Account> validateClientIdNumber(String customerIdentityNumber) {
-        return accountRepository.findByClientIdNumber(customerIdentityNumber)
-                .switchIfEmpty(Mono.just(Account.builder()
-                        .clientIdNumber(null).build()));
-    }
+  }
 
-    @Override
-    public Flux<Account> findByClientIdNumber(String clientIdNumber) {
-        return accountRepository.findByClientIdNumber(clientIdNumber);
-    }
+  private ClientDto obtainClient(String clientId) {
+    ClientDto clientDto = restTemplate.getForObject(urlApigateway + urlClients + "findClientCredit/" + clientId, ClientDto.class);
+    log.debug("clientDto:" + clientDto.getClientIdNumber());
+    return clientDto;
+  }
 
-    @Override
-    public Mono<Account> findByAccountNumber(String accountNumber) {
-        return accountRepository.findByAccountNumber(accountNumber);
-    }
+  @Override
+  public Mono<AccountDto> updateAccount(Mono<AccountDto> AccountDtoMono, String id) {
+    return accountRepository.findById(id)
+            .flatMap(p -> AccountDtoMono.map(AppUtils::dtoToEntity)
+                    .doOnNext(e -> e.setId(id)))
+            .flatMap(accountRepository::save)
+            .map(AppUtils::entityToDto);
+  }
+
+  public Mono<Void> deleteAccount(String id) {
+    return accountRepository.deleteById(id);
+  }
+
+  @Override
+  public Flux<Account> validateClientIdNumber(String customerIdentityNumber) {
+    return accountRepository.findByClientIdNumber(customerIdentityNumber)
+            .switchIfEmpty(Mono.just(Account.builder()
+                    .clientIdNumber(null).build()));
+  }
+
+  @Override
+  public Flux<Account> findByClientIdNumber(String clientIdNumber) {
+    return accountRepository.findByClientIdNumber(clientIdNumber);
+  }
+
+  @Override
+  public Mono<Account> findByAccountNumber(String accountNumber) {
+    return accountRepository.findByAccountNumber(accountNumber);
+  }
 }
